@@ -75,8 +75,7 @@
   },
   "scripts": {
     "post-install-cmd": [
-      "rm web/concrete/vendor",
-      "ln -s `pwd`/vendor web/concrete/vendor"
+      "ln -sf `pwd`/vendor web/concrete/vendor"
     ]
   }
 }
