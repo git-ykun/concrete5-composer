@@ -1,0 +1,11 @@
+{
+    "name": "concrete5/concrete5",
+    "description": "concrete5 open source CMS",
+    "authors": [
+        {
+            "name": "PortlandLabs",
+            "email": "korvin@portlandlabs.com"
+        }
+    ],
+    "require": {}
+}
