@@ -131,3 +131,6 @@ __IDE_SYMBOLS__.php
 /web/concrete/themes/dashboard/main.css
 /web/concrete/themes/elemental/css/bootstrap-modified.css
 /web/concrete/css/translator.css
+
+#Ignore vendor
+/vendor
