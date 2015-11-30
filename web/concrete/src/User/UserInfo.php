@@ -194,7 +194,7 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
         $uDateAdded = $dh->getOverridableNow();
         $hasher = new PasswordHash(Config::get('concrete.user.password.hash_cost_log2'), Config::get('concrete.user.password.hash_portable'));
 
-        if ($data['uIsValidated'] == 1) {
+        if (isset($data['uIsValidated']) && $data['uIsValidated'] == 1) {
             $uIsValidated = 1;
         } elseif (isset($data['uIsValidated']) && $data['uIsValidated'] == 0) {
             $uIsValidated = 0;
@@ -208,9 +208,10 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
             $uIsFullRecord = 1;
         }
 
-        $password_to_insert = $data['uPassword'];
+        $password_to_insert = isset($data['uPassword']) ? $data['uPassword'] : null;
         $hash = $hasher->HashPassword($password_to_insert);
 
+        $uDefaultLanguage = null;
         if (isset($data['uDefaultLanguage']) && $data['uDefaultLanguage'] != '') {
             $uDefaultLanguage = $data['uDefaultLanguage'];
         }
@@ -232,7 +233,7 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
 
                 // run any internal event we have for user add
                 $ue = new \Concrete\Core\User\Event\UserInfoWithPassword($ui);
-                $ue->setUserPassword($data['uPassword']);
+                $ue->setUserPassword($password_to_insert);
                 Events::dispatch('on_user_add', $ue);
             }
 
@@ -408,7 +409,7 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
 
         // send the email notification
         if ($recipient->getAttribute('profile_private_messages_notification_enabled')) {
-            $mh = Core::make('helper/mail');
+            $mh = Core::make('mail');
             $mh->addParameter('msgSubject', $subject);
             $mh->addParameter('msgBody', $text);
             $mh->addParameter('msgAuthor', $this->getUserName());
@@ -594,7 +595,11 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
             if (isset($data['uName'])) {
                 $uName = $data['uName'];
             }
+            $emailChanged = false;
             if (isset($data['uEmail'])) {
+                if ($uEmail != $data['uEmail']) {
+                    $emailChanged = true;
+                }
                 $uEmail = $data['uEmail'];
             }
             if (isset($data['uHasAvatar'])) {
@@ -629,6 +634,10 @@ class UserInfo extends Object implements \Concrete\Core\Permission\ObjectInterfa
                 $v = array($uName, $uEmail, $uHasAvatar, $uTimezone, $uDefaultLanguage, $this->uID);
                 $r = $db->prepare("update Users set uName = ?, uEmail = ?, uHasAvatar = ?, uTimezone = ?, uDefaultLanguage = ? where uID = ?");
                 $res = $db->execute($r, $v);
+            }
+
+            if ($emailChanged) {
+                $db->query("DELETE FROM UserValidationHashes WHERE uID = ?", array(intval($this->uID)));
             }
 
             // now we check to see if the user is updated his or her own logged in record

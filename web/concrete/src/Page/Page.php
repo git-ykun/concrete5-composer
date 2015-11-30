@@ -69,13 +69,13 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
 
     /**
      * @param int $cID Collection ID of a page
-     * @param string $versionOrig ACTIVE or RECENT
-     * @param string $class
+     * @param string $version ACTIVE or RECENT
      *
      * @return Page
      */
-    public static function getByID($cID, $version = 'RECENT', $class = 'Page')
+    public static function getByID($cID, $version = 'RECENT')
     {
+        $class = get_called_class();
         $c = CacheLocal::getEntry('page', $cID.'/'.$version.'/'.$class);
         if ($c instanceof $class) {
             return $c;
@@ -380,8 +380,11 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
         }
 
         $update_query .= ' '.implode(' ', $when_statements).' END WHERE bID in ('.
-            implode(',', array_pad(array(), count($block_order), '?')).')';
-        $db->execute($update_query, array_merge($update_values, $block_order));
+            implode(',', array_pad(array(), count($block_order), '?')).') AND cID = ? AND cvID = ?';
+        $values = array_merge($update_values, $block_order);
+        $values = array_merge($values, array($this->getCollectionID(), $this->getVersionID()));
+
+        $db->execute($update_query, $values);
     }
 
     /**
@@ -562,6 +565,7 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
             $pkHandles[] = 'view_page_versions';
             $pkHandles[] = 'edit_page_properties';
             $pkHandles[] = 'edit_page_contents';
+            $pkHandles[] = 'edit_page_multilingual_settings';
             $pkHandles[] = 'approve_page_versions';
             $pkHandles[] = 'move_or_copy_page';
             $pkHandles[] = 'preview_page_as_user';
@@ -572,6 +576,7 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
             $pkHandles[] = 'edit_page_permissions';
             $pkHandles[] = 'edit_page_theme';
             $pkHandles[] = 'schedule_page_contents_guest_access';
+            $pkHandles[] = 'edit_page_page_type';
             $pkHandles[] = 'edit_page_template';
             $pkHandles[] = 'delete_page';
             $pkHandles[] = 'delete_page_versions';
@@ -765,10 +770,10 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
     public function getCollectionIcon()
     {
         // returns a fully qualified image link for this page's icon, either based on its collection type or if icon.png appears in its view directory
-        $icon = '';
-
         $pe = new Event($this);
+        $pe->setArgument('icon', '');
         Events::dispatch('on_page_get_icon', $pe);
+        $icon = $pe->getArgument('icon');
 
         if ($icon) {
             return $icon;
@@ -1767,7 +1772,14 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
     public function getPageWrapperClass()
     {
         $pt = $this->getPageTypeObject();
-        $ptm = $this->getPageTemplateObject();
+        
+        $view = $this->getPageController()->getViewObject();
+        if($view) {
+            $ptm = $view->getPageTemplate();
+        } else {
+            $ptm = $this->getPageTemplateObject();    
+        }
+
         $classes = array('ccm-page');
         if (is_object($pt)) {
             $classes[] = 'page-type-'.str_replace('_', '-', $pt->getPageTypeHandle());
@@ -2642,10 +2654,15 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
         $systemPages = array('/login', '/register', Config::get('concrete.paths.trash'), STACKS_PAGE_PATH, Config::get('concrete.paths.drafts'), '/members', '/members/*', '/account', '/account/*', Config::get('concrete.paths.trash').'/*', STACKS_PAGE_PATH.'/*', Config::get('concrete.paths.drafts').'/*', '/download_file', '/dashboard', '/dashboard/*','/page_forbidden','/page_not_found');
         $th = Core::make('helper/text');
         $db->Execute('update Pages set cIsSystemPage = 0 where cID = ?', array($cID));
-        foreach ($systemPages as $sp) {
-            if ($th->fnmatch($sp, $newPath)) {
-                $db->Execute('update Pages set cIsSystemPage = 1 where cID = ?', array($cID));
-                $this->cIsSystemPage = true;
+        if ($this->cParentID == 0) {
+            $db->Execute('update Pages set cIsSystemPage = 1 where cID = ?', array($cID));
+            $this->cIsSystemPage = true;
+        } else {
+            foreach ($systemPages as $sp) {
+                if ($th->fnmatch($sp, $newPath)) {
+                    $db->Execute('update Pages set cIsSystemPage = 1 where cID = ?', array($cID));
+                    $this->cIsSystemPage = true;
+                }
             }
         }
     }
@@ -2659,6 +2676,8 @@ class Page extends Collection implements \Concrete\Core\Permission\ObjectInterfa
     {
         $db = Database::get();
         $db->Execute('update Pages set cParentID = 0 where cID = ?', array($this->getCollectionID()));
+        $this->cParentID = 0;
+        $this->rescanSystemPageStatus();
     }
 
     public function deactivate()

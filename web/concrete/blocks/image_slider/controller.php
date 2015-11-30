@@ -5,6 +5,7 @@ namespace Concrete\Block\ImageSlider;
 use Concrete\Core\Block\BlockController;
 use Database;
 use Page;
+use Concrete\Core\Editor\LinkAbstractor;
 
 class Controller extends BlockController
 {
@@ -67,9 +68,19 @@ class Controller extends BlockController
         $this->edit();
     }
 
-    public function registerViewAssets()
+    public function registerViewAssets($outputContent = '')
     {
+        $al = \Concrete\Core\Asset\AssetList::getInstance();
+
         $this->requireAsset('javascript', 'jquery');
+        $this->requireAsset('responsive-slides');
+
+
+        $al->register('javascript', 'responsiveslides', 'blocks/image_slider/responsiveslides.js');
+        $this->requireAsset('javascript', 'blocks/image_slider/responsiveslides');
+
+        $al->register('css', 'responsiveslides', 'blocks/image_slider/responsiveslides.css');
+        $this->requireAsset('css', 'blocks/image_slider/responsiveslides');
     }
 
     public function getEntries()
@@ -84,6 +95,7 @@ class Controller extends BlockController
                 $q['linkURL'] = $c->getCollectionLink();
                 $q['linkPage'] = $c;
             }
+            $q['description'] = LinkAbstractor::translateFrom($q['description']);
             $rows[] = $q;
         }
 
@@ -148,6 +160,10 @@ class Controller extends BlockController
                         break;
                 }
 
+                if (isset($args['description'][$i])) {
+                    $args['description'][$i] = LinkAbstractor::translateTo($args['description'][$i]);
+                }
+
                 $db->execute('INSERT INTO btImageSliderEntries (bID, fID, title, description, sortOrder, linkURL, internalLinkCID) values(?, ?, ?, ?,?,?,?)',
                     array(
                         $this->bID,
@@ -159,7 +175,7 @@ class Controller extends BlockController
                         $internalLinkCID,
                     )
                 );
-                $i++;
+                ++$i;
             }
         }
     }

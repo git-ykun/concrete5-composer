@@ -6,7 +6,6 @@ use Area;
 use BlockType;
 use CacheLocal;
 use Collection;
-use Concrete\Core\Area\SubArea;
 use Concrete\Core\Backup\ContentExporter;
 use Concrete\Core\Block\View\BlockView;
 use Concrete\Core\Feature\Assignment\Assignment as FeatureAssignment;
@@ -21,6 +20,7 @@ use Page;
 
 class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
 {
+
     protected $cID;
     protected $arHandle;
     protected $c;
@@ -28,6 +28,9 @@ class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
     protected $proxyBlock = false;
     protected $bActionCID;
     protected $cacheSettings;
+    public $a;
+
+    protected $bFilename;
 
     public static function populateManually($blockInfo, $c, $a)
     {
@@ -236,7 +239,8 @@ class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
                 $arHandle,
             )
         );
-        if ($r['btCachedBlockOutputExpires'] < time()) {
+
+        if (array_get($r, 'btCachedBlockOutputExpires') < time()) {
             return false;
         }
 
@@ -309,6 +313,8 @@ class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
             $cID = $cx->getCollectioniD();
             $cvID = $cx->getVersionID();
         }
+
+        \Log::info(t('Set Block Cached Output: %s - %s - %s %s - %s', $cID, $cvID, $this->getBlockID(), $arHandle, date('Y-m-d H:i:s', $btCachedBlockOutputExpires)));
 
         if ($arHandle && $cID && $cvID) {
             $db->Replace(
@@ -698,13 +704,12 @@ class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
 
     /**
      * Called by the scrapbook proxy block, this disables the original block container for the current request,
-     * because the scrapbook block takes care of rendering the container
+     * because the scrapbook block takes care of rendering the container.
      */
     public function disableBlockContainer()
     {
         $this->cbOverrideBlockTypeContainerSettings = true;
         $this->cbEnableBlockContainer = false;
-
     }
 
     public function cacheBlockOutputOnPost()
@@ -977,7 +982,7 @@ class Block extends Object implements \Concrete\Core\Permission\ObjectInterface
         $bt = $this->getBlockTypeObject();
         $db->update(
             'CollectionVersionBlocks',
-            array('cbOverrideBlockTypeContainerSettings' => 1, 'cbEnableBlockContainer' => $enableBlockContainer),
+            array('cbOverrideBlockTypeContainerSettings' => 1, 'cbEnableBlockContainer' => $enableBlockContainer ? 1 : 0),
             array(
                 'cID' => $this->getBlockCollectionID(),
                 'cvID' => $cvID,

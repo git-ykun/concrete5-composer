@@ -180,6 +180,9 @@ if (isset($cp) && $canViewToolbar && (!$dh->inDashboard())) {
                     </ul>
                 </li>
                 <? } ?>
+                <li>
+                    <i class="fa fa-sign-out mobile-leading-icon"></i><a href="<?= URL::to('/login', 'logout', Loader::helper('validation/token')->generate('logout')); ?>"><?= t('Sign Out'); ?></a>
+                </li>
             </ul>
         </div>
     </div>
@@ -469,7 +472,7 @@ if (isset($cp) && $canViewToolbar && (!$dh->inDashboard())) {
                                     $appLabel = t('Submit for Approval');
                                 }
                             }
-                            if (!$appLabel) {
+                            if (!isset($appLabel) || !$appLabel) {
                                 $appLabel = t('Approve Version');
                             }
 

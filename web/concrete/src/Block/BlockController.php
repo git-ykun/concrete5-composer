@@ -10,10 +10,12 @@ use Concrete\Core\Controller;
 use Concrete\Core\Feature\Feature;
 use Concrete\Core\Legacy\BlockRecord;
 use Concrete\Core\Page\Controller\PageController;
+use Concrete\Core\Page\Type\Type;
+use Concrete\Core\Permission\Checker;
 use Concrete\Core\StyleCustomizer\Inline\StyleSet;
 use Config;
+use Database;
 use Events;
-use Loader;
 use Package;
 use Page;
 
@@ -24,6 +26,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
     protected $record;
     protected $helpers = array('form');
     protected $block;
+    protected $bID;
     protected $btDescription = "";
     protected $btName = "";
     protected $btHandle = "";
@@ -141,7 +144,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
     {
         //$argsMerged = array_merge($_POST, $args);
         if ($this->btTable) {
-            $db = Loader::db();
+            $db = Database::connection();
             $columns = $db->MetaColumnNames($this->btTable);
             $this->record = new BlockRecord($this->btTable);
             $this->record->bID = $this->bID;
@@ -153,7 +156,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
             $this->record->Replace();
             if ($this->cacheBlockRecord() && Config::get('concrete.cache.blocks')) {
                 $record = base64_encode(serialize($this->record));
-                $db = Loader::db();
+                $db = Database::connection();
                 $db->Execute('update Blocks set btCachedBlockRecord = ? where bID = ?', array($record, $this->bID));
             }
         }
@@ -261,7 +264,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
                 if ($this->btCacheBlockRecord && Config::get('concrete.cache.blocks')) {
                     // this is the first time we're loading
                     $record = base64_encode(serialize($this->record));
-                    $db = Loader::db();
+                    $db = Database::connection();
                     $db->Execute('update Blocks set btCachedBlockRecord = ? where bID = ?', array($record, $this->bID));
                 }
             }
@@ -303,7 +306,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
         if (isset($this->btExportTables)) {
             $tables = $this->btExportTables;
         }
-        $db = Loader::db();
+        $db = Database::connection();
 
         foreach ($tables as $tbl) {
             if (!$tbl) {
@@ -346,7 +349,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
 
     public function import($page, $arHandle, \SimpleXMLElement $blockNode)
     {
-        $db = Loader::db();
+        $db = Database::connection();
         // handle the adodb stuff
         $args = $this->getImportData($blockNode, $page);
         $blockData = array();
@@ -430,6 +433,28 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
     public function setPassThruBlockController(PageController $controller)
     {
         $controller->setPassThruBlockController($this->block, $this);
+    }
+
+    public function validateAddBlockPassThruAction(Checker $ap, BlockType $bt)
+    {
+        return $ap->canAddBlock($bt);
+    }
+
+    public function validateEditBlockPassThruAction(Block $b)
+    {
+        $bp = new \Permissions($b);
+        return $bp->canEditBlock();
+    }
+
+    public function validateComposerAddBlockPassThruAction(Type $type)
+    {
+        $pp = new \Permissions($type);
+        return $pp->canAddPageType();
+    }
+
+    public function validateComposerEditBlockPassThruAction(Block $b)
+    {
+        return $this->validateEditBlockPassThruAction($b);
     }
 
     public function getPassThruActionAndParameters($parameters)
@@ -575,7 +600,7 @@ class BlockController extends \Concrete\Core\Controller\AbstractController
         }
     }
 
-    public function registerViewAssets()
+    public function registerViewAssets($outputContent = '')
     {
     }
 

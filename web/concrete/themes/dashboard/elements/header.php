@@ -1,5 +1,5 @@
 <? defined('C5_EXECUTE') or die("Access Denied.");
-if (isset($_GET['_ccm_dashboard_external']) && $_GET['_ccm_dashboard_external']) {
+if (\Request::getInstance()->get('_ccm_dashboard_external')) {
         return;
 }
 $html = Loader::helper('html');
@@ -56,6 +56,9 @@ $large_font = !!Config::get('concrete.accessibility.toolbar_large_font');
                         <li class="last-li"><a href="<?=View::url('/dashboard/extend') ?>"><?php echo t('Extend concrete5'); ?></a></li>
                         <li class="last-li"><a href="<?=View::url('/dashboard/system') ?>"><?php echo t('System & Settings'); ?></a></li>
                     </ul>
+                </li>
+                <li>
+                    <i class="fa fa-sign-out mobile-leading-icon"></i><a href="<?= URL::to('/login', 'logout', Loader::helper('validation/token')->generate('logout')); ?>"><?= t('Sign Out'); ?></a>
                 </li>
             </ul>
         </div>

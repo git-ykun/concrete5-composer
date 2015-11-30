@@ -152,8 +152,10 @@ class PageList extends DatabaseItemList implements PermissionableListItemInterfa
         $u = new \User();
         if ($this->permissionsChecker == -1) {
             $query = $this->deliverQueryObject();
-
-            return $query->select('count(distinct p.cID)')->setMaxResults(1)->execute()->fetchColumn();
+            // We add a custom order by here because otherwise, if we've added
+            // items to the select parts, and we're ordering by them, we get a SQL error
+            // when we get total results, because we're resetting the select
+            return $query->select('count(distinct p.cID)')->orderBy('p.cID', 'asc')->setMaxResults(1)->execute()->fetchColumn();
         } else {
             return -1; // unknown
         }
@@ -164,7 +166,10 @@ class PageList extends DatabaseItemList implements PermissionableListItemInterfa
         $u = new \User();
         if ($this->permissionsChecker == -1) {
             $adapter = new DoctrineDbalAdapter($this->deliverQueryObject(), function ($query) {
-                $query->select('count(distinct p.cID)')->setMaxResults(1);
+                // We add a custom order by here because otherwise, if we've added
+                // items to the select parts, and we're ordering by them, we get a SQL error
+                // when we get total results, because we're resetting the select
+                $query->select('count(distinct p.cID)')->orderBy('p.cID', 'asc')->setMaxResults(1);
             });
             $pagination = new Pagination($this, $adapter);
         } else {
@@ -184,7 +189,7 @@ class PageList extends DatabaseItemList implements PermissionableListItemInterfa
         if (is_object($c) && $this->checkPermissions($c)) {
             if ($this->pageVersionToRetrieve == self::PAGE_VERSION_RECENT) {
                 $cp = new \Permissions($c);
-                if ($cp->canViewPageVersions()) {
+                if ($cp->canViewPageVersions() || $this->permissionsChecker == -1) {
                     $c->loadVersionObject('RECENT');
                 }
             }

@@ -15,6 +15,8 @@ use Concrete\Core\Captcha\Library as SystemCaptchaLibrary;
 use Concrete\Core\Config\Repository\Liaison;
 use Concrete\Core\Conversation\Editor\Editor as ConversationEditor;
 use Concrete\Core\Conversation\Rating\Type as ConversationRatingType;
+use Concrete\Core\Database\EntityManagerFactory;
+use Concrete\Core\Database\EntityManagerFactoryInterface;
 use Concrete\Core\Database\Schema\Schema;
 use Concrete\Core\Editor\Snippet as SystemContentEditorSnippet;
 use Concrete\Core\Feature\Category\Category as FeatureCategory;
@@ -817,6 +819,14 @@ class Package extends Object
     }
 
     /**
+     * @return EntityManagerFactoryInterface
+     */
+    public function getEntityManagerFactory()
+    {
+        return new EntityManagerFactory($this->getPackageEntitiesPath());
+    }
+
+    /**
      * Gets a package specific entity manager.
      *
      * @return \Doctrine\ORM\EntityManager
@@ -1079,25 +1089,25 @@ class Package extends Object
     }
 
     /**
-     * Installs the packages database either through entities or if no entities
-     * are available for the package, through the legacy db.xml if it is
-     * available.
+     * Installs the packages database through doctrine entities and db.xml
+     * database definitions.
      *
      * @return void
      */
     public function installDatabase()
     {
+        $this->installEntitiesDatabase();
+
+        Package::installDB($this->getPackagePath() . '/' . FILENAME_PACKAGE_DB);
+    }
+
+    public function installEntitiesDatabase()
+    {
         $dbm = $this->getDatabaseStructureManager();
 
         if ($dbm->hasEntities()) {
             $dbm->generateProxyClasses();
-            $dbm->dropObsoleteDatabaseTables(camelcase($this->getPackageHandle()));
             $dbm->installDatabase();
-        }
-
-        if (file_exists($this->getPackagePath() . '/' . FILENAME_PACKAGE_DB)) {
-            // Legacy db.xml
-            Package::installDB($this->getPackagePath() . '/' . FILENAME_PACKAGE_DB);
         }
     }
 
@@ -1210,13 +1220,8 @@ class Package extends Object
      */
     public function upgradeDatabase()
     {
-        $dbm = $this->getDatabaseStructureManager();
         $this->destroyProxyClasses();
-        if ($dbm->hasEntities()) {
-            $dbm->generateProxyClasses();
-            $dbm->dropObsoleteDatabaseTables(camelcase($this->getPackageHandle()));
-            $dbm->installDatabase();
-        }
+        $this->installEntitiesDatabase();
 
         if (file_exists($this->getPackagePath() . '/' . FILENAME_PACKAGE_DB)) {
             // Legacy db.xml

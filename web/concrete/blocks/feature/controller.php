@@ -2,15 +2,14 @@
 
 namespace Concrete\Block\Feature;
 
+use Concrete\Core\Editor\LinkAbstractor;
 use Page;
-use Loader;
-
-defined('C5_EXECUTE') or die("Access Denied.");
-
 use Concrete\Core\Block\BlockController;
 use Less_Parser;
 use Less_Tree_Rule;
 use Core;
+
+defined('C5_EXECUTE') or die("Access Denied.");
 
 class Controller extends BlockController
 {
@@ -42,7 +41,7 @@ class Controller extends BlockController
             if (!empty($this->internalLinkCID)) {
                 $linkToC = Page::getByID($this->internalLinkCID);
 
-                return (empty($linkToC) || $linkToC->error) ? '' : Loader::helper('navigation')->getLinkToCollection(
+                return (empty($linkToC) || $linkToC->error) ? '' : Core::make('helper/navigation')->getLinkToCollection(
                     $linkToC
                 );
             } else {
@@ -51,7 +50,7 @@ class Controller extends BlockController
         }
     }
 
-    public function registerViewAssets()
+    public function registerViewAssets($outputContent = '')
     {
         $this->requireAsset('css', 'font-awesome');
         if (is_object($this->block) && $this->block->getBlockFilename() == 'hover_description') {
@@ -69,6 +68,7 @@ class Controller extends BlockController
 
     public function view()
     {
+        $this->set('paragraph', LinkAbstractor::translateFrom($this->paragraph));
         $this->set('linkURL', $this->getLinkURL());
     }
 
@@ -127,6 +127,7 @@ class Controller extends BlockController
                 $args['internalLinkCID'] = 0;
                 break;
         }
+        $args['paragraph'] = LinkAbstractor::translateTo($args['paragraph']);
         unset($args['linkType']);
         parent::save($args);
     }
