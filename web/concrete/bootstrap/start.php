@@ -45,6 +45,10 @@ PatchworkUTF8::initAll();
 $cms = require DIR_APPLICATION . '/bootstrap/start.php';
 $cms->instance('app', $cms);
 
+// Bind fully application qualified class names
+$cms->instance('Concrete\Core\Application\Application', $cms);
+$cms->instance('Illuminate\Container\Container', $cms);
+
 /**
  * ----------------------------------------------------------------------------
  * Bind the IOC container to our facades
@@ -272,6 +276,13 @@ if ($response) {
 
 /**
  * ----------------------------------------------------------------------------
+ * Now we load all installed packages, and register their package autoloaders.
+ * ----------------------------------------------------------------------------
+ */
+$cms->setupPackageAutoloaders();
+
+/**
+ * ----------------------------------------------------------------------------
  * Load preprocess items
  * ----------------------------------------------------------------------------
  */
@@ -296,7 +307,8 @@ $cms->handleAutomaticUpdates();
 
 /**
  * ----------------------------------------------------------------------------
- * Now we load all installed packages, and run package events on them.
+ * Now that we have languages out of the way, we can run our package on_start
+ * methods
  * ----------------------------------------------------------------------------
  */
 $cms->setupPackages();

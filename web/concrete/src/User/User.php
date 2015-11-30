@@ -75,9 +75,7 @@ class User extends Object
     public static function isLoggedIn()
     {
         $session = Core::make('session');
-
-        return $session->has('uID') && $session->get('uID') > 0 && $session->has('uName')
-            && $session->get('uName') != '' && $session->has('uLastPasswordChange');
+        return $session->has('uID') && $session->get('uID') > 0;
     }
 
     public function checkLogin()
@@ -87,6 +85,8 @@ class User extends Object
         if ($aeu && $aeu > $session->get('accessEntitiesUpdated')) {
             User::refreshUserGroups();
         }
+
+        \Concrete\Core\Session\Session::testSessionFixation($session);
 
         if ($session->get('uID') > 0) {
             $db = Loader::db();
@@ -116,6 +116,11 @@ class User extends Object
                 return false;
             }
         }
+    }
+
+    public function getUserInfoObject()
+    {
+        return \UserInfo::getByID($this->uID);
     }
 
     public function __construct()
@@ -517,7 +522,7 @@ class User extends Object
                     $ui = CoreUserInfo::getByID($this->getUserID());
                     $mh->addParameter('badgeName', $g->getGroupDisplayName(false));
                     $mh->addParameter('uDisplayName', $ui->getUserDisplayName());
-                    $mh->addParameter('uProfileURL', View::url('/members/profile', 'view', $this->getUserID()));
+                    $mh->addParameter('uProfileURL', (string) $ui->getUserPublicProfileURL());
                     $mh->addParameter('siteName', Config::get('concrete.site'));
                     $mh->to($ui->getUserEmail());
                     $mh->load('won_badge');
